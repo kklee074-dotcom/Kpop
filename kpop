@@ -1,0 +1,462 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local player = Players.LocalPlayer
+
+local basePosition = nil
+local targetRarity = "Secret"
+_G.AutoFarmCard = false
+_G.AutoCollectCash = false
+_G.NoclipEnabled = false
+_G.SpeedEnabled = false
+_G.ESPEnabled = false
+_G.AntiAFKEnabled = true
+_G.CustomSpeed = 30
+
+-- ระบบ Anti-AFK (กันหลุด)
+player.Idled:Connect(function()
+    if _G.AntiAFKEnabled then
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end
+end)
+
+-- ฟังก์ชันเซ็ตฐานอัตโนมัติเมื่อตัวละครเกิดใหม่
+local function onCharacterAdded(char)
+    local rootPart = char:WaitForChild("HumanoidRootPart", 10)
+    local humanoid = char:WaitForChild("Humanoid", 10)
+    
+    if rootPart then
+        task.wait(0.5)
+        basePosition = rootPart.CFrame
+    end
+    
+    if humanoid then
+        humanoid.Changed:Connect(function(property)
+            if property == "WalkSpeed" and _G.SpeedEnabled and humanoid.WalkSpeed ~= _G.CustomSpeed then
+                humanoid.WalkSpeed = _G.CustomSpeed
+            end
+        end)
+    end
+end
+
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+player.CharacterAdded:Connect(onCharacterAdded)
+
+-- ระบบ Noclip และ Speed Hack
+RunService.Stepped:Connect(function()
+    if _G.NoclipEnabled and player.Character then
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+    
+    if _G.SpeedEnabled and player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid and humanoid.WalkSpeed ~= _G.CustomSpeed then
+            humanoid.WalkSpeed = _G.CustomSpeed
+        end
+    end
+end)
+
+-- ระบบ ESP (มองเห็นการ์ดทะลุกำแพง)
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if _G.ESPEnabled then
+            local cardsFolder = workspace:FindFirstChild("Cards") or workspace
+            for _, item in ipairs(cardsFolder:GetDescendants()) do
+                if (item:IsA("BasePart") or item:IsA("Model")) then
+                    local targetPart = item:IsA("Model") and item.PrimaryPart or item
+                    if targetPart and not item:FindFirstChild("CardESPBox") then
+                        local billboard = Instance.new("BillboardGui")
+                        billboard.Name = "CardESPBox"
+                        billboard.Size = UDim2.new(0, 100, 0, 40)
+                        billboard.AlwaysOnTop = true
+                        billboard.StudsOffset = Vector3.new(0, 2, 0)
+                        
+                        local textLabel = Instance.new("TextLabel")
+                        textLabel.Size = UDim2.new(1, 0, 1, 0)
+                        textLabel.BackgroundTransparency = 1
+                        textLabel.Text = item.Name
+                        textLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
+                        textLabel.TextSize = 12
+                        textLabel.Font = Enum.Font.SourceSansBold
+                        textLabel.Parent = billboard
+                        
+                        billboard.Parent = targetPart
+                    end
+                end
+            end
+        else
+            local cardsFolder = workspace:FindFirstChild("Cards") or workspace
+            for _, item in ipairs(cardsFolder:GetDescendants()) do
+                if item:FindFirstChild("CardESPBox") then
+                    item.CardESPBox:Destroy()
+                end
+            end
+        end
+    end
+end)
+
+-- สร้าง GUI บนหน้าจอ
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KpopCardTabbedUI"
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- ปุ่มเปิด/ปิดเมนูหลัก (Floating Button)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Position = UDim2.new(0, 20, 0, 150)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+ToggleButton.Text = "UI"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 18
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Parent = ScreenGui
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+
+-- กรอบเมนูหลัก
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 280, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -140, 0.5, -180)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+MainFrame.Draggable = true
+
+-- หัวข้อเมนู
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Title.Text = "K-Pop Hub (Tabbed Menu)"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+-- แถบเปลี่ยนหมวดหมู่ (Tab Bar ด้านบน)
+local TabBar = Instance.new("Frame")
+TabBar.Size = UDim2.new(1, 0, 0, 35)
+TabBar.Position = UDim2.new(0, 0, 0, 35)
+TabBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TabBar.BorderSizePixel = 0
+TabBar.Parent = MainFrame
+
+-- สร้างปุ่มเลือกหมวดหมู่ (Tabs)
+local tabButtons = {}
+local tabContents = {}
+
+local function createTab(name, order)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.33, 0, 1, 0)
+    btn.Position = UDim2.new((order - 1) * 0.33, 0, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Parent = TabBar
+    tabButtons[name] = btn
+
+    local content = Instance.new("ScrollingFrame")
+    content.Size = UDim2.new(1, -10, 1, -85)
+    content.Position = UDim2.new(0, 5, 0, 75)
+    content.BackgroundTransparency = 1
+    content.Visible = false
+    content.CanvasSize = UDim2.new(0, 0, 0, 300)
+    content.ScrollBarThickness = 4
+    content.Parent = MainFrame
+    tabContents[name] = content
+
+    btn.MouseButton1Click:Connect(function()
+        for k, c in pairs(tabContents) do
+            c.Visible = (k == name)
+            tabButtons[k].BackgroundColor3 = (k == name) and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(50, 50, 50)
+        end
+    end)
+    
+    return content
+end
+
+-- สร้าง 3 หมวดหมู่หลัก
+local FarmTab = createTab("Farm", 1)
+local PlayerTab = createTab("Player", 2)
+local VisualsTab = createTab("Visuals", 3)
+
+-- ตั้งค่าหน้าเริ่มต้นให้โชว์หมวด Farm ก่อน
+tabContents["Farm"].Visible = true
+tabButtons["Farm"].BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+
+-- ==================== [หมวดที่ 1: FARM] ====================
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, 0, 0, 25)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Target: " .. targetRarity
+StatusLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+StatusLabel.TextSize = 13
+StatusLabel.Font = Enum.Font.SourceSansBold
+StatusLabel.Parent = FarmTab
+
+local rarities = {"Secret", "Heaven", "Mythical", "Legendary", "Meme", "Sugar", "Elemental", "Desert", "Cyberpunk", "Galactic", "Signed", "Collector"}
+local rarityIndex = 1
+
+local ChangeRarityBtn = Instance.new("TextButton")
+ChangeRarityBtn.Size = UDim2.new(1, 0, 0, 35)
+ChangeRarityBtn.Position = UDim2.new(0, 0, 0, 30)
+ChangeRarityBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+ChangeRarityBtn.Text = "เปลี่ยนความหายากการ์ด"
+ChangeRarityBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ChangeRarityBtn.TextSize = 12
+ChangeRarityBtn.Font = Enum.Font.SourceSansBold
+ChangeRarityBtn.Parent = FarmTab
+
+ChangeRarityBtn.MouseButton1Click:Connect(function()
+    rarityIndex = rarityIndex + 1
+    if rarityIndex > #rarities then rarityIndex = 1 end
+    targetRarity = rarities[rarityIndex]
+    StatusLabel.Text = "Target: " .. targetRarity
+end)
+
+local CashBtn = Instance.new("TextButton")
+CashBtn.Size = UDim2.new(1, 0, 0, 38)
+CashBtn.Position = UDim2.new(0, 0, 0, 75)
+CashBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 50)
+CashBtn.Text = "Auto Collect Cash: OFF"
+CashBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CashBtn.TextSize = 13
+CashBtn.Font = Enum.Font.SourceSansBold
+CashBtn.Parent = FarmTab
+
+CashBtn.MouseButton1Click:Connect(function()
+    _G.AutoCollectCash = not _G.AutoCollectCash
+    if _G.AutoCollectCash then
+        CashBtn.Text = "Auto Collect Cash: ON"
+        CashBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        CashBtn.Text = "Auto Collect Cash: OFF"
+        CashBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 50)
+    end
+end)
+
+local ToggleFarmBtn = Instance.new("TextButton")
+ToggleFarmBtn.Size = UDim2.new(1, 0, 0, 42)
+ToggleFarmBtn.Position = UDim2.new(0, 0, 0, 120)
+ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+ToggleFarmBtn.Text = "Auto Farm Card: OFF"
+ToggleFarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleFarmBtn.TextSize = 13
+ToggleFarmBtn.Font = Enum.Font.SourceSansBold
+ToggleFarmBtn.Parent = FarmTab
+
+ToggleFarmBtn.MouseButton1Click:Connect(function()
+    _G.AutoFarmCard = not _G.AutoFarmCard
+    if _G.AutoFarmCard then
+        ToggleFarmBtn.Text = "Auto Farm Card: ON"
+        ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        ToggleFarmBtn.Text = "Auto Farm Card: OFF"
+        ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+-- ==================== [หมวดที่ 2: PLAYER] ====================
+local SetBaseBtn = Instance.new("TextButton")
+SetBaseBtn.Size = UDim2.new(1, 0, 0, 35)
+SetBaseBtn.Position = UDim2.new(0, 0, 0, 10)
+SetBaseBtn.BackgroundColor3 = Color3.fromRGB(50, 120, 200)
+SetBaseBtn.Text = "เซฟตำแหน่งฐานปัจจุบัน"
+SetBaseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SetBaseBtn.TextSize = 12
+SetBaseBtn.Font = Enum.Font.SourceSansBold
+SetBaseBtn.Parent = PlayerTab
+
+SetBaseBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        basePosition = char.HumanoidRootPart.CFrame
+        SetBaseBtn.Text = "บันทึกฐานใหม่สำเร็จ!"
+        task.delay(2, function() SetBaseBtn.Text = "เซฟตำแหน่งฐานปัจจุบัน" end)
+    end
+end)
+
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(1, 0, 0, 38)
+NoclipBtn.Position = UDim2.new(0, 0, 0, 55)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(120, 70, 150)
+NoclipBtn.Text = "Noclip (ทะลุกำแพง): OFF"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipBtn.TextSize = 13
+NoclipBtn.Font = Enum.Font.SourceSansBold
+NoclipBtn.Parent = PlayerTab
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    _G.NoclipEnabled = not _G.NoclipEnabled
+    if _G.NoclipEnabled then
+        NoclipBtn.Text = "Noclip (ทะลุกำแพง): ON"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+    else
+        NoclipBtn.Text = "Noclip (ทะลุกำแพง): OFF"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(120, 70, 150)
+    end
+end)
+
+local SpeedBtn = Instance.new("TextButton")
+SpeedBtn.Size = UDim2.new(1, 0, 0, 38)
+SpeedBtn.Position = UDim2.new(0, 0, 0, 100)
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 50)
+SpeedBtn.Text = "Speed Hack (ความเร็ว 30): OFF"
+SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedBtn.TextSize = 13
+SpeedBtn.Font = Enum.Font.SourceSansBold
+SpeedBtn.Parent = PlayerTab
+
+SpeedBtn.MouseButton1Click:Connect(function()
+    _G.SpeedEnabled = not _G.SpeedEnabled
+    if _G.SpeedEnabled then
+        SpeedBtn.Text = "Speed Hack (ความเร็ว 30): ON"
+        SpeedBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        SpeedBtn.Text = "Speed Hack (ความเร็ว 30): OFF"
+        SpeedBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 50)
+    end
+end)
+
+-- ==================== [หมวดที่ 3: VISUALS] ====================
+local ESPBtn = Instance.new("TextButton")
+ESPBtn.Size = UDim2.new(1, 0, 0, 38)
+ESPBtn.Position = UDim2.new(0, 0, 0, 10)
+ESPBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 180)
+ESPBtn.Text = "ESP มองเห็นการ์ด: OFF"
+ESPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPBtn.TextSize = 13
+ESPBtn.Font = Enum.Font.SourceSansBold
+ESPBtn.Parent = VisualsTab
+
+ESPBtn.MouseButton1Click:Connect(function()
+    _G.ESPEnabled = not _G.ESPEnabled
+    if _G.ESPEnabled then
+        ESPBtn.Text = "ESP มองเห็นการ์ด: ON"
+        ESPBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        ESPBtn.Text = "ESP มองเห็นการ์ด: OFF"
+        ESPBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 180)
+    end
+end)
+
+-- ปุ่มปิด/ซ่อนเมนูที่ด้านล่างสุดของ MainFrame
+local HideMenuBtn = Instance.new("TextButton")
+HideMenuBtn.Size = UDim2.new(1, -10, 0, 25)
+HideMenuBtn.Position = UDim2.new(0, 5, 1, -30)
+HideMenuBtn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+HideMenuBtn.Text = "ซ่อนเมนู (พับจอ)"
+HideMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+HideMenuBtn.TextSize = 11
+HideMenuBtn.Font = Enum.Font.SourceSansBold
+HideMenuBtn.Parent = MainFrame
+
+local ShowMenuBtn = Instance.new("TextButton")
+ShowMenuBtn.Size = UDim2.new(0, 100, 0, 30)
+ShowMenuBtn.Position = UDim2.new(0, 80, 0, 10)
+ShowMenuBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+ShowMenuBtn.Text = "เปิดเมนูคืน"
+ShowMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ShowMenuBtn.TextSize = 12
+ShowMenuBtn.Font = Enum.Font.SourceSansBold
+ShowMenuBtn.Visible = false
+ShowMenuBtn.Parent = ScreenGui
+
+HideMenuBtn.MouseButton1Click:Connect(function()
+    TabBar.Visible = false
+    for _, c in pairs(tabContents) do c.Visible = false end
+    Title.Visible = false
+    HideMenuBtn.Visible = false
+    MainFrame.Size = UDim2.new(0, 280, 0, 0)
+    ShowMenuBtn.Visible = true
+end)
+
+ShowMenuBtn.MouseButton1Click:Connect(function()
+    TabBar.Visible = true
+    tabContents["Farm"].Visible = true -- เปิดแท็บแรกกลับมา
+    tabButtons["Farm"].BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    tabButtons["Player"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    tabButtons["Visuals"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Title.Visible = true
+    HideMenuBtn.Visible = true
+    MainFrame.Size = UDim2.new(0, 280, 0, 360)
+    ShowMenuBtn.Visible = false
+end)
+
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- ระบบเบื้องหลัง: ออโต้เก็บเงิน
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if _G.AutoCollectCash then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if not _G.AutoCollectCash then break end
+                local name = string.lower(obj.Name)
+                if name:find("cash") or name:find("money") or name:find("collect") then
+                    local part = obj:IsA("Model") and obj.PrimaryPart or (obj:IsA("BasePart") and obj)
+                    if part then
+                        local char = player.Character
+                        if char and char:FindFirstChild("HumanoidRootPart") and basePosition then
+                            local hrp = char.HumanoidRootPart
+                            local oldPos = hrp.CFrame
+                            hrp.CFrame = part.CFrame
+                            task.wait(0.2)
+                            hrp.CFrame = oldPos
+                            task.wait(0.5)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ระบบเบื้องหลัง: ออโต้ฟาร์มการ์ด
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoFarmCard and basePosition then
+            local cardsFolder = workspace:FindFirstChild("Cards") or workspace
+            local found = false
+            
+            for _, item in ipairs(cardsFolder:GetDescendants()) do
+                if not _G.AutoFarmCard then break end
+                
+                if string.find(string.lower(item.Name), string.lower(targetRarity)) then
+                    local targetPart = item:IsA("Model") and item.PrimaryPart or (item:IsA("BasePart") and item)
+                    
+                    if targetPart then
+                        local currentCharacter = player.Character
+                        if currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart") then
+                            local hrp = currentCharacter.HumanoidRootPart
+                            
+                            hrp.CFrame = targetPart.CFrame
+                            task.wait(math.random(30, 60) / 100) 
+                            hrp.CFrame = basePosition
+                            found = true
+                            task.wait(math.random(50, 100) / 100)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
