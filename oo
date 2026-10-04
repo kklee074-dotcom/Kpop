@@ -1,0 +1,107 @@
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "TierScannerGUI"
+gui.ResetOnSpawn = false
+
+-- รองรับ Delta และตัวรันทุกค่าย
+if syn and syn.protect_gui then
+    syn.protect_gui(gui)
+    gui.Parent = game.CoreGui
+elseif gethui then
+    gui.Parent = gethui()
+else
+    gui.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- สร้างหน้าต่างหลัก
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 420, 0, 320)
+frame.Position = UDim2.new(0.5, -210, 0.5, -160)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true -- ทำให้ลากเลื่อนหน้าต่างได้
+frame.Parent = gui
+
+-- แถบหัวข้อ
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 15
+title.Font = Enum.Font.SourceSansBold
+title.Text = "🔍 Tier & Attribute Scanner (ลากเพื่อย้ายหน้าต่างได้)"
+title.Parent = frame
+
+-- ปุ่มปิด
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Text = "X"
+closeBtn.TextSize = 14
+closeBtn.Parent = frame
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+-- พื้นที่แสดงข้อความเลื่อนได้
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(1, -10, 1, -50)
+scrollingFrame.Position = UDim2.new(0, 5, 0, 45)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollingFrame.Parent = frame
+
+local uiList = Instance.new("UIListLayout")
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0, 4)
+uiList.Parent = scrollingFrame
+
+local function addLog(text, color)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 24)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color or Color3.fromRGB(0, 255, 128)
+    label.TextSize = 13
+    label.Font = Enum.Font.Code
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Text = " " .. text
+    label.Parent = scrollingFrame
+end
+
+addLog("กำลังเริ่มสแกน Workspace และ ReplicatedStorage...", Color3.fromRGB(255, 255, 0))
+
+-- เริ่มสแกนแบบแยกเธรดกันค้าง
+task.spawn(function()
+    local count = 0
+    local function scanInstance(item)
+        pcall(function()
+            local attributes = item:GetAttributes()
+            if attributes and next(attributes) ~= nil then
+                for k, v in pairs(attributes) do
+                    addLog("["..item.Name..] " .. k .." = ".. tostring(v), Color3.fromRGB(0, 255, 128))
+                    count = count + 1
+                end
+            end
+            if item:IsA("StringValue") or item:IsA("IntValue") or item:IsA("NumberValue") then
+                addLog("Value ["..item.Name.."] = "..tostring(item.Value), Color3.fromRGB(100, 200, 255))
+                count = count + 1
+            end
+        end)
+    end
+
+    -- สแกน Workspace
+    for _, desc in ipairs(game:GetService("Workspace"):GetDescendants()) do
+        scanInstance(desc)
+    end
+
+    -- สแกน ReplicatedStorage
+    for _, desc in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+        scanInstance(desc)
+    end
+
+    addLog("สแกนเสร็จสิ้น! พบข้อมูลทั้งหมด " .. count .. " รายการ", Color3.fromRGB(255, 100, 255))
+end)
