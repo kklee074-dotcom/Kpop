@@ -1,0 +1,38 @@
+-- สคริปต์สแกนหา Attributes และเทียร์ต่างๆ ในเกม
+local function printOutput(...)
+    print("[Tier & Attribute Scanner]:", ...)
+end
+
+printOutput("กำลังเริ่มสแกนหาข้อมูลระดับและเทียร์ในเกม...")
+
+local function scanInstance(item)
+    -- ตรวจสอบ Attributes ที่ซ่อนอยู่
+    local attributes = item:GetAttributes()
+    if attributes and next(attributes) ~= nil then
+        printOutput("พบ Attribute ที่:", item:GetFullName())
+        for k, v in pairs(attributes) do
+            printOutput("  -> key:", k, "| value:", tostring(v))
+        end
+    end
+    
+    -- ตรวจสอบ Value Objects (เช่น StringValue, IntValue)
+    if item:IsA("StringValue") or item:IsA("IntValue") or item:IsA("NumberValue") then
+        printOutput("พบ Value Object:", item:GetFullName(), "=", tostring(item.Value))
+    end
+end
+
+-- สแกนใน Workspace (แพ็คการ์ด, วัตถุในแมพ)
+local workspace = game:GetService("Workspace")
+printOutput("--- กำลังสแกน Workspace ---")
+for _, descendant in ipairs(workspace:GetDescendants()) do
+    scanInstance(descendant)
+end
+
+-- สแกนใน ReplicatedStorage (ไฟล์ระบบ, Config, โมดูล)
+local replicatedStorage = game:GetService("ReplicatedStorage")
+printOutput("--- กำลังสแกน ReplicatedStorage ---")
+for _, descendant in ipairs(replicatedStorage:GetDescendants()) do
+    scanInstance(descendant)
+end
+
+printOutput("สแกนเสร็จสิ้น! ตรวจสอบผลลัพธ์ได้ที่ Console ของ Delta")
